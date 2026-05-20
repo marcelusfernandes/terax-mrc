@@ -61,14 +61,39 @@ Apresentar resultado ao usuário e **pedir aprovação para abrir PR**. Não abr
 
 ### 5. Open PR (somente após aprovação)
 
+**Forma à prova de erro** — flags explícitos pra escapar dos defaults do GitHub em forks:
+
 ```bash
 git push -u origin <branch-name>
-gh pr create --base develop --title "<conventional title>" --body "<body>"
+
+gh pr create \
+  --repo marcelusfernandes/terax-mrc \
+  --base develop \
+  --head <branch-name> \
+  --title "<conventional title>" \
+  --body "<body>"
+
 # Capturar o número da PR do output
 mv _plans-fase1/2_doing/<branch-name> _plans-fase1/3_review/PR<NN>-<branch-name>
 ```
 
-**NUNCA** `--base main`.
+**Regras absolutas:**
+- **NUNCA** `--base main`.
+- **NUNCA** omitir `--repo marcelusfernandes/terax-mrc` (sem ele, o `gh` pode default pro upstream `crynta/terax-ai`).
+- **NUNCA** compartilhar/usar URL `/pull/new/<branch>` (ver `branch-strategy.md` → "GitHub UI trap em forks").
+
+**Se for via navegador**, usar:
+```
+https://github.com/marcelusfernandes/terax-mrc/compare/develop...<branch-name>?expand=1
+```
+
+**Após criar, conferir imediatamente:**
+```bash
+gh pr view <NN> --repo marcelusfernandes/terax-mrc --json baseRefName,headRefName,baseRepository,headRepository
+```
+- `baseRefName` deve ser `develop`
+- `baseRepository.name` deve ser `terax-mrc` (não `terax-ai`)
+- Se algo estiver errado: `gh pr edit <NN> --repo marcelusfernandes/terax-mrc --base develop` (não dá pra mudar base repo cross-fork via gh; nesse caso fechar e reabrir).
 
 ### 6. Status sync (periodicamente e quando o usuário perguntar)
 

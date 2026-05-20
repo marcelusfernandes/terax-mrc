@@ -5,9 +5,34 @@ Estas regras são inegociáveis. Aplicam-se a toda mudança neste repositório.
 ## Branch base
 
 - **`develop` é a branch base.** Toda branch é criada a partir de `develop`.
-- **PRs SEMPRE apontam para `develop`. NUNCA para `main`.**
+- **PRs SEMPRE apontam para `develop` no próprio fork (`marcelusfernandes/terax-mrc`). NUNCA para `main` e NUNCA para o upstream (`crynta/terax-ai`).**
 - **NUNCA fazer merge direto em qualquer branch** — sempre via PR.
 - **Sempre validar com o usuário ANTES de abrir PR.** Não abrir PR sem aprovação explícita.
+
+## ⚠️ GitHub UI trap em forks (CRÍTICO)
+
+Quando uma branch é pushada para um fork, o GitHub aplica **dois defaults agressivos** ao abrir o form de PR:
+
+1. **Base repo** = upstream (`crynta/terax-ai`), não o fork
+2. **Base branch** = default branch do upstream (`main`)
+
+Isto leva a PRs apontando pra `crynta/terax-ai:main` mesmo quando a intenção é PR interno no fork.
+
+**Regras para evitar:**
+
+- **NUNCA usar a URL `https://github.com/.../pull/new/<branch>`.** Essa URL não força base/head e cai nos defaults do GitHub.
+- **Sempre usar a URL de compare explícita** quando for via navegador:
+  ```
+  https://github.com/marcelusfernandes/terax-mrc/compare/develop...<branch-name>?expand=1
+  ```
+  Esse formato força `base=develop` no fork e `head=<branch-name>` no fork.
+- **Preferir `gh pr create` com `--repo` e `--head` explícitos** (ver `plans-kanban.md`).
+- **Antes de submeter o form do GitHub, conferir explicitamente:**
+  - "base repository" = `marcelusfernandes/terax-mrc` (não `crynta/terax-ai`)
+  - "base" branch = `develop` (não `main`)
+  - "compare" branch = a sua feature branch
+
+## Naming
 
 ## Naming
 
