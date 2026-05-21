@@ -28,6 +28,10 @@ export const EDITOR_THEMES = [
 
 export type EditorThemeId = (typeof EDITOR_THEMES)[number];
 
+export type MarkdownView = "raw" | "rendered";
+
+export type MarkdownOpenLocation = "tab" | "side";
+
 export const EDITOR_THEME_LABELS: Record<EditorThemeId, string> = {
   atomone: "Atom One",
   aura: "Aura",
@@ -62,6 +66,9 @@ export type Preferences = {
   favoriteModelIds: string[];
   recentModelIds: string[];
   vimMode: boolean;
+  markdownView: MarkdownView;
+  markdownOpenLocation: MarkdownOpenLocation;
+  markdownSidePanelWidth: number;
   showHidden: boolean;
   terminalWebglEnabled: boolean;
   terminalFontFamily: string;
@@ -95,6 +102,9 @@ const KEY_OPENAI_COMPAT_CONTEXT_LIMIT = "openaiCompatibleContextLimit";
 const KEY_FAVORITE_MODELS = "favoriteModelIds";
 const KEY_RECENT_MODELS = "recentModelIds";
 const KEY_VIM_MODE = "vimMode";
+const KEY_MARKDOWN_VIEW = "markdownView";
+const KEY_MARKDOWN_OPEN_LOCATION = "markdownOpenLocation";
+const KEY_MARKDOWN_SIDE_PANEL_WIDTH = "markdownSidePanelWidth";
 const KEY_SHOW_HIDDEN = "showHidden";
 const LEGACY_KEY_SHOW_HIDDEN_DIRS = "showHiddenDirectories";
 const KEY_TERMINAL_WEBGL_ENABLED = "terminalWebglEnabled";
@@ -143,6 +153,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   favoriteModelIds: [],
   recentModelIds: [],
   vimMode: false,
+  markdownView: "rendered",
+  markdownOpenLocation: "tab",
+  markdownSidePanelWidth: 480,
   showHidden: false,
   terminalWebglEnabled: true,
   terminalFontFamily: "",
@@ -223,6 +236,14 @@ export async function loadPreferences(): Promise<Preferences> {
     recentModelIds:
       get<string[]>(KEY_RECENT_MODELS) ?? DEFAULT_PREFERENCES.recentModelIds,
     vimMode: get<boolean>(KEY_VIM_MODE) ?? DEFAULT_PREFERENCES.vimMode,
+    markdownView:
+      get<MarkdownView>(KEY_MARKDOWN_VIEW) ?? DEFAULT_PREFERENCES.markdownView,
+    markdownOpenLocation:
+      get<MarkdownOpenLocation>(KEY_MARKDOWN_OPEN_LOCATION) ??
+      DEFAULT_PREFERENCES.markdownOpenLocation,
+    markdownSidePanelWidth:
+      get<number>(KEY_MARKDOWN_SIDE_PANEL_WIDTH) ??
+      DEFAULT_PREFERENCES.markdownSidePanelWidth,
     showHidden:
       get<boolean>(KEY_SHOW_HIDDEN) ??
       get<boolean>(LEGACY_KEY_SHOW_HIDDEN_DIRS) ??
@@ -344,6 +365,21 @@ export async function setVimMode(value: boolean): Promise<void> {
   await writePref(KEY_VIM_MODE, value);
 }
 
+export async function setMarkdownView(value: MarkdownView): Promise<void> {
+  await writePref(KEY_MARKDOWN_VIEW, value);
+}
+
+export async function setMarkdownOpenLocation(
+  value: MarkdownOpenLocation,
+): Promise<void> {
+  await writePref(KEY_MARKDOWN_OPEN_LOCATION, value);
+}
+
+export async function setMarkdownSidePanelWidth(value: number): Promise<void> {
+  const clamped = Number.isFinite(value) ? Math.max(240, Math.round(value)) : 480;
+  await writePref(KEY_MARKDOWN_SIDE_PANEL_WIDTH, clamped);
+}
+
 export async function setShowHidden(value: boolean): Promise<void> {
   await writePref(KEY_SHOW_HIDDEN, value);
 }
@@ -431,6 +467,9 @@ export async function onPreferencesChange(
     [KEY_FAVORITE_MODELS]: "favoriteModelIds",
     [KEY_RECENT_MODELS]: "recentModelIds",
     [KEY_VIM_MODE]: "vimMode",
+    [KEY_MARKDOWN_VIEW]: "markdownView",
+    [KEY_MARKDOWN_OPEN_LOCATION]: "markdownOpenLocation",
+    [KEY_MARKDOWN_SIDE_PANEL_WIDTH]: "markdownSidePanelWidth",
     [KEY_SHOW_HIDDEN]: "showHidden",
     [KEY_TERMINAL_WEBGL_ENABLED]: "terminalWebglEnabled",
     [KEY_TERMINAL_FONT_FAMILY]: "terminalFontFamily",

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { EditorTab, Tab } from "@/modules/tabs";
+import type { MarkdownView } from "@/modules/settings/store";
 import { useEffect, useRef } from "react";
 import { EditorPane, type EditorPaneHandle } from "./EditorPane";
 
@@ -7,6 +8,7 @@ type Props = {
   tabs: Tab[];
   activeId: number;
   onDirtyChange: (id: number, dirty: boolean) => void;
+  onMarkdownViewChange: (id: number, next: MarkdownView) => void;
   registerHandle: (id: number, handle: EditorPaneHandle | null) => void;
   onCloseTab: (id: number) => void;
 };
@@ -15,6 +17,7 @@ export function EditorStack({
   tabs,
   activeId,
   onDirtyChange,
+  onMarkdownViewChange,
   registerHandle,
   onCloseTab,
 }: Props) {
@@ -26,6 +29,7 @@ export function EditorStack({
   // the parent. Memoizing per id keeps each callback's identity stable.
   const registerRef = useRef(registerHandle);
   const dirtyRef = useRef(onDirtyChange);
+  const markdownViewRef = useRef(onMarkdownViewChange);
   const closeRef = useRef(onCloseTab);
   useEffect(() => {
     registerRef.current = registerHandle;
@@ -34,6 +38,9 @@ export function EditorStack({
     dirtyRef.current = onDirtyChange;
   }, [onDirtyChange]);
   useEffect(() => {
+    markdownViewRef.current = onMarkdownViewChange;
+  }, [onMarkdownViewChange]);
+  useEffect(() => {
     closeRef.current = onCloseTab;
   }, [onCloseTab]);
 
@@ -41,6 +48,9 @@ export function EditorStack({
     new Map<number, (h: EditorPaneHandle | null) => void>(),
   );
   const dirtyCallbacks = useRef(new Map<number, (dirty: boolean) => void>());
+  const markdownViewCallbacks = useRef(
+    new Map<number, (next: MarkdownView) => void>(),
+  );
   const closeCallbacks = useRef(new Map<number, () => void>());
 
   const getRefCallback = (id: number) => {
@@ -56,6 +66,14 @@ export function EditorStack({
     if (!cb) {
       cb = (dirty: boolean) => dirtyRef.current(id, dirty);
       dirtyCallbacks.current.set(id, cb);
+    }
+    return cb;
+  };
+  const getMarkdownViewCallback = (id: number) => {
+    let cb = markdownViewCallbacks.current.get(id);
+    if (!cb) {
+      cb = (next: MarkdownView) => markdownViewRef.current(id, next);
+      markdownViewCallbacks.current.set(id, cb);
     }
     return cb;
   };
@@ -76,6 +94,9 @@ export function EditorStack({
     }
     for (const id of dirtyCallbacks.current.keys()) {
       if (!live.has(id)) dirtyCallbacks.current.delete(id);
+    }
+    for (const id of markdownViewCallbacks.current.keys()) {
+      if (!live.has(id)) markdownViewCallbacks.current.delete(id);
     }
     for (const id of closeCallbacks.current.keys()) {
       if (!live.has(id)) closeCallbacks.current.delete(id);
@@ -100,6 +121,8 @@ export function EditorStack({
               <EditorPane
                 ref={getRefCallback(t.id)}
                 path={t.path}
+                markdownView={t.markdownView}
+                onMarkdownViewChange={getMarkdownViewCallback(t.id)}
                 onDirtyChange={getDirtyCallback(t.id)}
                 onClose={getCloseCallback(t.id)}
               />
