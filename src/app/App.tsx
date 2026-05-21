@@ -35,6 +35,7 @@ import {
   EditorStack,
   GitDiffStack,
   NewEditorDialog,
+  SideMarkdownPanel,
   type EditorPaneHandle,
 } from "@/modules/editor";
 import {
@@ -49,11 +50,14 @@ import {
   type SearchInlineHandle,
   type SearchTarget,
 } from "@/modules/header";
-import { MarkdownStack } from "@/modules/markdown";
 import { PreviewStack, type PreviewPaneHandle } from "@/modules/preview";
 import { openSettingsWindow } from "@/modules/settings/openSettingsWindow";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import { onKeysChanged } from "@/modules/settings/store";
+import {
+  onKeysChanged,
+  setMarkdownSidePanelWidth,
+  type MarkdownView,
+} from "@/modules/settings/store";
 import {
   ShortcutsDialog,
   useGlobalShortcuts,
@@ -66,7 +70,12 @@ import {
   useSourceControl,
 } from "@/modules/source-control";
 import { StatusBar } from "@/modules/statusbar";
-import { MAX_PANES_PER_TAB, useTabs, useWorkspaceCwd } from "@/modules/tabs";
+import {
+  isMarkdownPath,
+  MAX_PANES_PER_TAB,
+  useTabs,
+  useWorkspaceCwd,
+} from "@/modules/tabs";
 import {
   disposeSession,
   findLeafCwd,
@@ -144,7 +153,6 @@ export default function App() {
     openFileTab,
     pinTab,
     newPreviewTab,
-    newMarkdownTab,
     openAiDiffTab,
     closeAiDiffTab,
     openGitDiffTab,
@@ -430,7 +438,6 @@ export default function App() {
   const isTerminalTab = activeTab?.kind === "terminal";
   const isEditorTab = activeTab?.kind === "editor";
   const isPreviewTab = activeTab?.kind === "preview";
-  const isMarkdownTab = activeTab?.kind === "markdown";
   const isAiDiffTab = activeTab?.kind === "ai-diff";
   const isGitDiffTab =
     activeTab?.kind === "git-diff" || activeTab?.kind === "git-commit-file";
@@ -713,13 +720,62 @@ export default function App() {
     [newTab],
   );
 
+  const markdownOpenLocation = usePreferencesStore(
+    (s) => s.markdownOpenLocation,
+  );
+  const markdownSidePanelWidthPref = usePreferencesStore(
+    (s) => s.markdownSidePanelWidth,
+  );
+  const [sideMarkdownPath, setSideMarkdownPath] = useState<string | null>(null);
+  const [sideMarkdownView, setSideMarkdownView] = useState<
+    MarkdownView | undefined
+  >(undefined);
+  const sidePanelWidthWriteTimerRef = useRef(0);
+
+  const handleSidePanelResize = useCallback((size: { inPixels: number }) => {
+    if (size.inPixels <= 0) return;
+    if (sidePanelWidthWriteTimerRef.current) {
+      window.clearTimeout(sidePanelWidthWriteTimerRef.current);
+    }
+    sidePanelWidthWriteTimerRef.current = window.setTimeout(() => {
+      sidePanelWidthWriteTimerRef.current = 0;
+      void setMarkdownSidePanelWidth(size.inPixels);
+    }, 200);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (sidePanelWidthWriteTimerRef.current) {
+        window.clearTimeout(sidePanelWidthWriteTimerRef.current);
+      }
+    };
+  }, []);
+
+  const openMarkdownInSide = useCallback((path: string) => {
+    setSideMarkdownPath(path);
+    setSideMarkdownView(undefined);
+  }, []);
+
+  const closeSideMarkdown = useCallback(() => {
+    setSideMarkdownPath(null);
+    setSideMarkdownView(undefined);
+  }, []);
+
+  const handleSideMarkdownViewChange = useCallback((next: MarkdownView) => {
+    setSideMarkdownView(next);
+  }, []);
+
   const handleOpenFile = useCallback(
     (path: string, pin?: boolean) => {
+      if (markdownOpenLocation === "side" && isMarkdownPath(path)) {
+        openMarkdownInSide(path);
+        return;
+      }
       // Explorer defaults to preview (pin=false); explicit actions like
       // context-menu "Open" pass pin=true for a persistent tab.
       openFileTab(path, pin ?? false);
     },
-    [openFileTab],
+    [openFileTab, markdownOpenLocation, openMarkdownInSide],
   );
 
   const handlePathRenamed = useCallback(
@@ -866,13 +922,6 @@ export default function App() {
       return id;
     },
     [newPreviewTab],
-  );
-
-  const openMarkdownPreview = useCallback(
-    (path: string) => {
-      newMarkdownTab(path);
-    },
-    [newMarkdownTab],
   );
 
   const splitActivePaneInActiveTab = useCallback(
@@ -1028,6 +1077,12 @@ export default function App() {
     [updateTab],
   );
 
+  const handleEditorMarkdownView = useCallback(
+    (id: number, markdownView: "raw" | "rendered") =>
+      updateTab(id, { markdownView }),
+    [updateTab],
+  );
+
   const searchTarget = useMemo<SearchTarget>(() => {
     if (isTerminalTab && activeLeafId !== null && activeSearchAddon)
       return {
@@ -1140,6 +1195,7 @@ export default function App() {
           activeId={activeId}
           registerHandle={registerEditorHandle}
           onDirtyChange={handleEditorDirty}
+          onMarkdownViewChange={handleEditorMarkdownView}
           onCloseTab={disposeTab}
         />
       </div>
@@ -1156,15 +1212,6 @@ export default function App() {
           registerHandle={registerPreviewHandle}
           onUrlChange={handlePreviewUrl}
         />
-      </div>
-      <div
-        className={cn(
-          "absolute inset-0 px-3 pt-2 pb-2",
-          !isMarkdownTab && "invisible pointer-events-none",
-        )}
-        aria-hidden={!isMarkdownTab}
-      >
-        <MarkdownStack tabs={tabs} activeId={activeId} />
       </div>
       <div
         className={cn(
@@ -1261,7 +1308,7 @@ export default function App() {
                         onPathDeleted={handlePathDeleted}
                         onRevealInTerminal={cdInNewTab}
                         onAttachToAgent={handleAttachFileToAgent}
-                        onOpenMarkdownPreview={openMarkdownPreview}
+                        onOpenMarkdownToSide={openMarkdownInSide}
                       />
                     ) : (
                       <SourceControlPanel
@@ -1282,9 +1329,34 @@ export default function App() {
               <ResizableHandle withHandle />
               <ResizablePanel id="workspace" defaultSize="78%" minSize="30%">
                 <div className="flex h-full min-h-0 flex-col">
-                  <div className="relative min-h-0 flex-1">
-                    {workspaceSurface}
-                  </div>
+                  <ResizablePanelGroup
+                    orientation="horizontal"
+                    className="min-h-0 flex-1"
+                  >
+                    <ResizablePanel id="workspace-main" minSize="20%">
+                      {workspaceSurface}
+                    </ResizablePanel>
+                    {sideMarkdownPath && (
+                      <>
+                        <ResizableHandle withHandle />
+                        <ResizablePanel
+                          id="markdown-side"
+                          defaultSize={`${markdownSidePanelWidthPref}px`}
+                          minSize="240px"
+                          onResize={handleSidePanelResize}
+                        >
+                          <SideMarkdownPanel
+                            path={sideMarkdownPath}
+                            markdownView={sideMarkdownView}
+                            onMarkdownViewChange={
+                              handleSideMarkdownViewChange
+                            }
+                            onClose={closeSideMarkdown}
+                          />
+                        </ResizablePanel>
+                      </>
+                    )}
+                  </ResizablePanelGroup>
 
                   {keysLoaded ? (
                     <motion.div

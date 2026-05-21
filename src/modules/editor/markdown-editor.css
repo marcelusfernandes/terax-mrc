@@ -1,0 +1,235 @@
+/* Markdown editor styling for Milkdown (ProseMirror). Aims for an Obsidian-ish
+ * look — generous spacing, clear heading hierarchy, dark-mode friendly via
+ * the project's CSS variables. */
+
+.markdown-editor .ProseMirror {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--foreground);
+  caret-color: var(--foreground);
+  outline: none;
+  min-height: 100%;
+}
+
+.markdown-editor .ProseMirror > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-editor .ProseMirror > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings — Obsidian-style hierarchy */
+.markdown-editor .ProseMirror h1,
+.markdown-editor .ProseMirror h2,
+.markdown-editor .ProseMirror h3,
+.markdown-editor .ProseMirror h4,
+.markdown-editor .ProseMirror h5,
+.markdown-editor .ProseMirror h6 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  color: var(--foreground);
+}
+
+.markdown-editor .ProseMirror h1 {
+  font-size: 1.875em; /* ~30px */
+  margin-top: 0.6em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+}
+
+.markdown-editor .ProseMirror h2 {
+  font-size: 1.5em; /* ~24px */
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 40%, transparent);
+}
+
+.markdown-editor .ProseMirror h3 {
+  font-size: 1.25em; /* ~20px */
+}
+
+.markdown-editor .ProseMirror h4 {
+  font-size: 1.05em;
+}
+
+.markdown-editor .ProseMirror h5 {
+  font-size: 0.95em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.markdown-editor .ProseMirror h6 {
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+/* Paragraphs */
+.markdown-editor .ProseMirror p {
+  margin: 0.6em 0;
+}
+
+/* Strong + em */
+.markdown-editor .ProseMirror strong {
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.markdown-editor .ProseMirror em {
+  font-style: italic;
+}
+
+/* Lists */
+.markdown-editor .ProseMirror ul,
+.markdown-editor .ProseMirror ol {
+  margin: 0.6em 0;
+  padding-left: 1.6em;
+}
+
+.markdown-editor .ProseMirror ul {
+  list-style: disc;
+}
+
+.markdown-editor .ProseMirror ol {
+  list-style: decimal;
+}
+
+.markdown-editor .ProseMirror li {
+  margin: 0.2em 0;
+}
+
+.markdown-editor .ProseMirror li > p {
+  margin: 0.2em 0;
+}
+
+.markdown-editor .ProseMirror ul ul,
+.markdown-editor .ProseMirror ul ol,
+.markdown-editor .ProseMirror ol ul,
+.markdown-editor .ProseMirror ol ol {
+  margin: 0.2em 0;
+}
+
+/* Task lists (GFM) */
+.markdown-editor .ProseMirror li[data-task-list-item],
+.markdown-editor .ProseMirror li.task-list-item {
+  list-style: none;
+  margin-left: -1.3em;
+}
+
+/* Blockquotes */
+.markdown-editor .ProseMirror blockquote {
+  margin: 0.8em 0;
+  padding: 0.2em 0 0.2em 1em;
+  border-left: 3px solid color-mix(in oklch, var(--foreground) 25%, transparent);
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.markdown-editor .ProseMirror blockquote p {
+  margin: 0.3em 0;
+}
+
+/* Inline code */
+.markdown-editor .ProseMirror code {
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 0.9em;
+  padding: 0.15em 0.35em;
+  background: color-mix(in oklch, var(--muted) 70%, transparent);
+  border-radius: 4px;
+  color: var(--foreground);
+}
+
+/* Code blocks */
+.markdown-editor .ProseMirror pre {
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 0.875em;
+  line-height: 1.55;
+  margin: 0.8em 0;
+  padding: 0.9em 1em;
+  background: var(--muted);
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  border-radius: 6px;
+  overflow-x: auto;
+  color: var(--foreground);
+}
+
+.markdown-editor .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Links */
+.markdown-editor .ProseMirror a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+.markdown-editor .ProseMirror a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Horizontal rules */
+.markdown-editor .ProseMirror hr {
+  margin: 1.5em 0;
+  border: 0;
+  border-top: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+}
+
+/* Tables (GFM) */
+.markdown-editor .ProseMirror table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: auto;
+  font-size: 0.95em;
+}
+
+.markdown-editor .ProseMirror th,
+.markdown-editor .ProseMirror td {
+  padding: 0.4em 0.8em;
+  border: 1px solid color-mix(in oklch, var(--border) 75%, transparent);
+  text-align: left;
+}
+
+.markdown-editor .ProseMirror th {
+  background: color-mix(in oklch, var(--muted) 50%, transparent);
+  font-weight: 600;
+}
+
+/* Images */
+.markdown-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.6em 0;
+}
+
+/* Strikethrough (GFM) */
+.markdown-editor .ProseMirror s,
+.markdown-editor .ProseMirror del {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+/* Selection */
+.markdown-editor .ProseMirror::selection,
+.markdown-editor .ProseMirror *::selection {
+  background: color-mix(in oklch, var(--primary) 30%, transparent);
+}
+
+/* Empty paragraph hint (subtle) */
+.markdown-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}

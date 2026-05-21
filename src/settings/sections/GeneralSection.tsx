@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import type { ThemePref } from "@/modules/settings/store";
+import type { MarkdownView, ThemePref } from "@/modules/settings/store";
 import {
   EDITOR_THEME_LABELS,
   EDITOR_THEMES,
@@ -22,6 +22,8 @@ import {
   TERMINAL_SCROLLBACK_PRESETS,
   setAutostart,
   setEditorTheme,
+  setMarkdownOpenLocation,
+  setMarkdownView,
   setRestoreWindowState,
   setShowHidden,
   setTerminalFontFamily,
@@ -69,6 +71,10 @@ export function GeneralSection() {
   const terminalLetterSpacing = usePreferencesStore((s) => s.terminalLetterSpacing);
   const terminalFontSize = usePreferencesStore((s) => s.terminalFontSize);
   const terminalScrollback = usePreferencesStore((s) => s.terminalScrollback);
+  const markdownOpenLocation = usePreferencesStore(
+    (s) => s.markdownOpenLocation,
+  );
+  const markdownView = usePreferencesStore((s) => s.markdownView);
 
   // Reconcile autostart pref with the actual OS state on mount — the user may
   // have toggled it from System Settings.
@@ -177,6 +183,59 @@ export function GeneralSection() {
           <Switch
             checked={vimMode}
             onCheckedChange={(v) => void setVimMode(v)}
+          />
+        </SettingRow>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Markdown</Label>
+        <SettingRow
+          title="Default mode"
+          description="How markdown files open by default. The toolbar inside each file can still override this per-tab; whichever you pick last is remembered for next time."
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-8 justify-between gap-2 rounded-none px-2.5 text-[12px]"
+              >
+                <span>{markdownView === "rendered" ? "Rendered" : "Raw"}</span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={12}
+                  strokeWidth={2}
+                  className="opacity-70"
+                />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[140px] rounded-none border border-border bg-popover p-0 shadow-none ring-0"
+            >
+              {(["rendered", "raw"] as MarkdownView[]).map((v) => (
+                <DropdownMenuItem
+                  key={v}
+                  onSelect={() => void setMarkdownView(v)}
+                  className={cn(
+                    "rounded-none px-3 py-1.5 text-[12px]",
+                    v === markdownView && "bg-accent/50",
+                  )}
+                >
+                  {v === "rendered" ? "Rendered" : "Raw"}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SettingRow>
+        <SettingRow
+          title="Open to the side"
+          description="When enabled, opening a markdown file places it in a side panel next to the active tab instead of as its own tab. The Rendered / Raw toggle keeps working inside the panel."
+        >
+          <Switch
+            checked={markdownOpenLocation === "side"}
+            onCheckedChange={(v) =>
+              void setMarkdownOpenLocation(v ? "side" : "tab")
+            }
           />
         </SettingRow>
       </div>

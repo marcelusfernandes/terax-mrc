@@ -2,11 +2,11 @@ export { TabBar } from "./TabBar";
 export {
   MAX_PANES_PER_TAB,
   useTabs,
+  isMarkdownPath,
   type Tab,
   type TerminalTab,
   type EditorTab,
   type PreviewTab,
-  type MarkdownTab,
   type AiDiffTab,
   type GitDiffTab,
   type GitHistoryTab,

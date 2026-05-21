@@ -7,14 +7,22 @@ import {
 } from "@codemirror/search";
 import { keymap } from "@codemirror/view";
 import { usePreferencesStore } from "@/modules/settings/preferences";
+import {
+  setMarkdownView,
+  type MarkdownView as MarkdownViewKind,
+} from "@/modules/settings/store";
+import { isMarkdownPath } from "@/modules/tabs";
+import { cn } from "@/lib/utils";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { EDITOR_THEME_EXT } from "./lib/themes";
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { Prec } from "@codemirror/state";
 import { vim } from "@replit/codemirror-vim";
@@ -31,6 +39,8 @@ import { useDocument } from "./lib/useDocument";
 import { inlineCompletion } from "./lib/autocomplete/inlineExtension";
 import { getKey } from "@/modules/ai/lib/keyring";
 import { onKeysChanged } from "@/modules/settings/store";
+import { MarkdownEditor } from "./MarkdownEditor";
+import { MarkdownToolbar } from "./MarkdownToolbar";
 
 export type EditorPaneHandle = {
   setQuery: (q: string) => void;
@@ -49,6 +59,8 @@ export type EditorPaneHandle = {
 
 type Props = {
   path: string;
+  markdownView?: MarkdownViewKind;
+  onMarkdownViewChange?: (next: MarkdownViewKind) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: () => void;
   onClose?: () => void;
@@ -61,15 +73,64 @@ function formatBytes(n: number): string {
 }
 
 export const EditorPane = forwardRef<EditorPaneHandle, Props>(
-  function EditorPane({ path, onDirtyChange, onSaved, onClose }, ref) {
+  function EditorPane(
+    { path, markdownView, onMarkdownViewChange, onDirtyChange, onSaved, onClose },
+    ref,
+  ) {
     const { doc, onChange, save, reload } = useDocument({ path, onDirtyChange });
     const reloadRef = useRef(reload);
     reloadRef.current = reload;
     const cmRef = useRef<ReactCodeMirrorRef>(null);
     const editorThemeId = usePreferencesStore((s) => s.editorTheme);
     const vimMode = usePreferencesStore((s) => s.vimMode);
+    const prefMarkdownView = usePreferencesStore((s) => s.markdownView);
     const languageRef = useRef<string | null>(null);
     const apiKeyRef = useRef<string | null>(null);
+
+    const isMarkdown = isMarkdownPath(path);
+    const effectiveView: MarkdownViewKind = isMarkdown
+      ? (markdownView ?? prefMarkdownView)
+      : "raw";
+    const showRendered = isMarkdown && effectiveView === "rendered";
+
+    // Live mirror of the CodeMirror buffer used by MarkdownView in Rendered
+    // mode. Updated via the wrapped onChange below so the rendered view
+    // reflects in-memory edits made in Raw without re-reading from disk.
+    const [currentMarkdown, setCurrentMarkdown] = useState("");
+
+    useEffect(() => {
+      if (doc.status === "ready") setCurrentMarkdown(doc.content);
+    }, [doc]);
+
+    const handleChange = useCallback(
+      (next: string) => {
+        if (isMarkdown) setCurrentMarkdown(next);
+        onChange(next);
+      },
+      [isMarkdown, onChange],
+    );
+
+    const handleMarkdownContentChange = useCallback((nextMarkdown: string) => {
+      const view = cmRef.current?.view;
+      if (!view) return;
+      const current = view.state.doc.toString();
+      if (current === nextMarkdown) return;
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: nextMarkdown,
+        },
+      });
+    }, []);
+
+    const handleMarkdownViewChange = useCallback(
+      (next: MarkdownViewKind) => {
+        onMarkdownViewChange?.(next);
+        void setMarkdownView(next);
+      },
+      [onMarkdownViewChange],
+    );
 
     useEffect(() => {
       let cancelled = false;
@@ -292,26 +353,50 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(
 
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <CodeMirror
-          ref={cmRef}
-          value={doc.content}
-          onChange={onChange}
-          theme={themeExt}
-          extensions={extensions}
-          height="100%"
-          className="flex-1 min-h-0 overflow-hidden"
-          basicSetup={{
-            lineNumbers: true,
-            highlightActiveLineGutter: true,
-            foldGutter: true,
-            bracketMatching: true,
-            closeBrackets: true,
-            autocompletion: true,
-            highlightActiveLine: true,
-            highlightSelectionMatches: true,
-            searchKeymap: true,
-          }}
-        />
+        {isMarkdown && (
+          <MarkdownToolbar
+            value={effectiveView}
+            onChange={handleMarkdownViewChange}
+          />
+        )}
+        <div className="relative flex-1 min-h-0 overflow-hidden">
+          <div
+            className={cn(
+              "absolute inset-0",
+              showRendered && "invisible pointer-events-none",
+            )}
+            aria-hidden={showRendered}
+          >
+            <CodeMirror
+              ref={cmRef}
+              value={doc.content}
+              onChange={handleChange}
+              theme={themeExt}
+              extensions={extensions}
+              height="100%"
+              className="h-full overflow-hidden"
+              basicSetup={{
+                lineNumbers: true,
+                highlightActiveLineGutter: true,
+                foldGutter: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                highlightActiveLine: true,
+                highlightSelectionMatches: true,
+                searchKeymap: true,
+              }}
+            />
+          </div>
+          {showRendered && (
+            <div className="absolute inset-0 overflow-auto bg-background">
+              <MarkdownEditor
+                content={currentMarkdown}
+                onContentChange={handleMarkdownContentChange}
+              />
+            </div>
+          )}
+        </div>
       </div>
     );
   },

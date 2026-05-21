@@ -12,6 +12,13 @@ import {
   type SplitDir,
 } from "@/modules/terminal/lib/panes";
 import { disposeSession } from "@/modules/terminal/lib/useTerminalSession";
+import type { MarkdownView } from "@/modules/settings/store";
+
+const MARKDOWN_PATH_RE = /\.(md|markdown)$/i;
+
+export function isMarkdownPath(path: string): boolean {
+  return MARKDOWN_PATH_RE.test(path);
+}
 
 // Matches the renderer slot pool size — over this we'd evict an active leaf.
 export const MAX_PANES_PER_TAB = 4;
@@ -39,6 +46,12 @@ export type EditorTab = {
    * is replaced by the next single-click rather than accumulating.
    */
   preview: boolean;
+  /**
+   * Only meaningful when `path` is a markdown file (`.md` / `.markdown`).
+   * `undefined` for non-markdown tabs. Driven by the persisted `markdownView`
+   * preference at open time; toggled per-tab from the editor toolbar.
+   */
+  markdownView?: MarkdownView;
 };
 
 export type PreviewTab = {
@@ -46,13 +59,6 @@ export type PreviewTab = {
   kind: "preview";
   title: string;
   url: string;
-};
-
-export type MarkdownTab = {
-  id: number;
-  kind: "markdown";
-  title: string;
-  path: string;
 };
 
 export type AiDiffStatus = "pending" | "approved" | "rejected";
@@ -104,7 +110,6 @@ export type Tab =
   | TerminalTab
   | EditorTab
   | PreviewTab
-  | MarkdownTab
   | AiDiffTab
   | GitDiffTab
   | GitHistoryTab
@@ -116,6 +121,7 @@ export type TabPatch = Partial<{
   path: string;
   dirty: boolean;
   url: string;
+  markdownView: MarkdownView;
 }>;
 
 function basename(path: string): string {
@@ -373,24 +379,6 @@ export function useTabs(initial?: Partial<TerminalTab>) {
     return id;
   }, []);
 
-  const newMarkdownTab = useCallback((path: string) => {
-    let targetId: number | null = null;
-    setTabs((curr) => {
-      const existing = curr.find(
-        (t) => t.kind === "markdown" && t.path === path,
-      );
-      if (existing) {
-        targetId = existing.id;
-        return curr;
-      }
-      const id = nextIdRef.current++;
-      targetId = id;
-      return [...curr, { id, kind: "markdown", title: basename(path), path }];
-    });
-    if (targetId !== null) setActiveId(targetId);
-    return targetId;
-  }, []);
-
   const openGitDiffTab = useCallback(
     (input: {
       path: string;
@@ -576,23 +564,19 @@ export function useTabs(initial?: Partial<TerminalTab>) {
             }),
           };
         }
-        if (x.kind === "markdown") {
-          return {
-            ...x,
-            ...(patch.title !== undefined && { title: patch.title }),
-          };
-        }
+        if (x.kind !== "editor") return x;
         // editor tab: auto-promote from preview the moment the file becomes dirty.
         const autoPin =
-          patch.dirty === true && (x as EditorTab).preview
-            ? { preview: false }
-            : {};
+          patch.dirty === true && x.preview ? { preview: false } : {};
         return {
           ...x,
           ...autoPin,
           ...(patch.title !== undefined && { title: patch.title }),
           ...(patch.dirty !== undefined && { dirty: patch.dirty }),
           ...(patch.path !== undefined && { path: patch.path }),
+          ...(patch.markdownView !== undefined && {
+            markdownView: patch.markdownView,
+          }),
         };
       }),
     );
@@ -782,7 +766,6 @@ export function useTabs(initial?: Partial<TerminalTab>) {
     openFileTab,
     pinTab,
     newPreviewTab,
-    newMarkdownTab,
     openAiDiffTab,
     openGitDiffTab,
     openCommitHistoryTab,
